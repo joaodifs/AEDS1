@@ -1,0 +1,227 @@
+/*
+ Guia0309 - v0.5. - __ / __ / _____
+ Author: __________________________
+ Para compilar em uma janela de comandos (terminal):
+
+ No Linux : g++ -o Guia0309 ./Guia0309.cpp
+ No Windows: g++ -o Guia0309.exe Guia0309.cpp
+ Para executar em uma janela de comandos (terminal):
+ No Linux : ./Guia0309
+ No Windows: Guia0309
+*/
+// lista de dependencias
+#include "karel.hpp"
+#include "io.hpp"
+// --------------------------- definicoes de metodos
+/**
+ decorateWorld - Metodo para preparar o cenario.
+ @param fileName - nome do arquivo para guardar a descricao.
+*/
+void decorateWorld ( const char* fileName )
+{
+// colocar paredes no mundo
+// world->set ( 4, 4, VWALL );
+// world->set ( 4, 4, HWALL );
+// colocar um marcador no mundo
+    world->set ( 4, 4, BEEPER );
+// salvar a configuracao atual do mundo
+    world->save( fileName );
+} // decorateWorld ( )
+/**
+ Classe para definir robo particular (MyRobot),
+ a partir do modelo generico (Robot)
+ Nota: Todas as definicoes irao valer para qualquer outro robo
+ criado a partir dessa nova descricao de modelo.
+*/
+class MyRobot : public Robot
+{
+public:
+    /**
+    turnRight - Procedimento para virar 'a direita.
+    */
+    void turnRight ( )
+    {
+// definir dado local
+        int step = 0;
+// testar se o robo esta' ativo
+        if ( checkStatus ( ) )
+        {
+// o agente que executar esse metodo
+// devera' virar tres vezes 'a esquerda
+            for ( step = 1; step <= 3; step = step + 1 )
+            {
+                turnLeft( );
+            } // end for
+        } // end if
+    } // end turnRight ( )
+    /**
+    moveN - Metodo para mover certa quantidade de passos.
+    @param steps - passos a serem dados.
+    */
+    void moveN( int steps )
+    {
+// definir dado local
+        int step = 0;
+// testar se a quantidade de passos e' maior que zero
+        for ( step = steps; step > 0; step = step - 1 )
+        {
+// dar um passo
+            move( );
+        } // end if
+    } // end moveN( )
+
+    /**
+     mapWorld Metodo para o robot explorar o mundo
+     e fazer um mapa.
+     @param map - arranjo bidimensional ( matriz )
+     onde guardar o mapa
+    */
+    void mapWorld ( int map [ ][WIDTH] )
+    {
+// definir dados locais
+        int avenue = 0,
+            street = 0;
+        int beepers = 0;
+        char message [80];
+// obter o tamanho do mundo
+        if ( world != nullptr )
+        {
+// informar o tamanho do mundo
+            message [0] = '\0';
+            sprintf ( message, "World is %dx%d", world->avenues( ), world->streets( ) );
+            show_Text ( message );
+// percorrer o mundo procurando beepers
+            for ( street=1; street<=world->streets( ); street=street+1 )
+            {
+                for ( avenue=1; avenue<=world->avenues( ); avenue=avenue+1 )
+                {
+// limpar posicao no mapa
+                    map [ street-1 ][ avenue-1 ] = 0;
+// se proximo a um marcador
+                    if ( nextToABeeper( ) )
+                    {
+// informar marcador nesta posicao
+                        message [0] = '\0';
+                        sprintf ( message, "Beeper at (%d,%d)", avenue, street );
+                        show_Text ( message );
+// marcar posicao no mapa
+                        map [ street-1 ][ avenue-1 ] = 1;
+// encontrado mais um marcador
+                        beepers = beepers + 1;
+                    } // end if
+// mover para a proxima posicao
+                    if ( avenue < world->avenues( ) )
+                    {
+                        move( );
+                    } // end if
+                } // end for
+                turnLeft ( );
+                turnLeft ( );
+                moveN ( world->avenues( )-1 );
+                if ( street < world->streets( ) )
+                {
+                    turnRight ( );
+                    move ( );
+                    turnRight ( );
+                } // end if
+            } // end for
+        } // end if
+    } // end mapWorld( )
+
+    /**
+     saveMap - Metodo para guardar um mapa em arquivo.
+     @param filename - nome do arquivo onde guardar o mapa
+     @param map - arranjo bidimensional (matriz) com o mapa
+    */
+    void saveMap ( const char * fileName, int map [ ][WIDTH] )
+    {
+// definir dados locais
+        int avenue = 0,
+            street = 0;
+// abrir arquivo para gravacao
+        std::ofstream archive ( fileName );
+// testar se ha' informacao
+        if ( world != nullptr )
+        {
+// guardar o tamanho do mundo
+            archive << world->avenues( ) << "\n";
+            archive << world->streets( ) << "\n";
+// percorrer o mundo procurando beepers
+            for ( street=1; street<=world->streets( ); street=street+1 )
+            {
+                for ( avenue=1; avenue<=world->avenues( ); avenue=avenue+1 )
+                {
+// guardar informacao no arquivo
+                    if ( map [ street-1 ][ avenue-1 ] == 1 )
+                    {
+                        archive << avenue << std::endl;
+                        archive << street << std::endl;
+                        archive << map [street-1][avenue-1] << std::endl;
+                    } // end if
+                } // end for
+            } // end for
+// fechar arquivo
+            archive.close ( );
+        } // end if
+    } // end saveMap ( )
+
+}; // end class MyRobot
+// --------------------------- acao principal
+/**
+ Acao principal: executar a tarefa descrita acima.
+*/
+int main ( )
+{
+// declarar as variáveis
+    int quantidade=0;
+// definir o contexto
+// criar o ambiente e decorar com objetos
+// OBS.: executar pelo menos uma vez,
+// antes de qualquer outra coisa
+// (depois de criado, podera' ser comentado)
+    world->create ( "" ); // criar o mundo
+    decorateWorld ( "Guia0309.txt" );
+    world->show ( );
+// preparar o ambiente para uso
+    world->reset ( ); // limpar configuracoes
+    world->read ( "Guia0309.txt" );// ler configuracao atual para o ambiente
+    world->show ( ); // mostrar a configuracao atual
+    set_Speed ( 0 ); // definir velocidade padrao
+// criar robo
+    MyRobot *robot = new MyRobot( );
+// posicionar robo no ambiente (situacao inicial):
+// posicao(x=1,y=1), voltado para direita, com zero marcadores, nome escolhido )
+    robot->create ( 1, 1, EAST, 0, "Karel" );
+    // definir armazenador para o mapa
+    int map [HEIGHT][WIDTH]; // altura x largura
+    // executar tarefas
+    robot->mapWorld ( map );
+    robot->saveMap ( "Mapa0309.txt", map );
+
+// encerrar operacoes no ambiente
+    world->close ( );
+// encerrar programa
+    getchar ( );
+    return ( 0 );
+} // end main ( )
+// ------------------------------------------- testes
+/*
+---------------------------------------------- documentacao complementar
+---------------------------------------------- notas / observacoes / comentarios
+---------------------------------------------- previsao de testes
+---------------------------------------------- historico
+Versao Data Modificacao
+ 0.1 __/__ esboco
+---------------------------------------------- testes
+Versao Teste
+ 0.1 01. ( OK ) identificacao de programa
+ 0.1 02. ( OK ) "countcommands" retornando valor
+ 0.1 03. ( OK ) procedimento para ler os comandos
+ 0.1 04. ( OK ) adicionando os comandos
+ 0.1 05. ( OK ) executando pelo doTask
+ 0.1 06. ( OK ) mostrando tamanho do mundo
+ 0.1 07. ( OK ) método para explorar mundo
+ 0.1 08. ( OK ) criando um mapa do mundo
+ 0.1 09. ( OK ) salvando o mapa
+
+*/
